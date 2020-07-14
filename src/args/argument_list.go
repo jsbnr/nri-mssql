@@ -3,6 +3,7 @@ package args
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	sdkArgs "github.com/newrelic/infra-integrations-sdk/args"
@@ -23,12 +24,19 @@ type ArgumentList struct {
 	EnableBufferMetrics          bool   `default:"true" help:"Enable collection of buffer space metrics."`
 	EnableDatabaseReserveMetrics bool   `default:"true" help:"Enable collection of database reserve space metrics."`
 	Timeout                      string `default:"30" help:"Timeout in seconds for a single SQL Query. Set 0 for no timeout"`
+	RSAPrivateKey                string `default:"" help:"Absolute path to RSA private key (pem) file. If present assume the password is RSA encrypted and base64 encoded."`
+	Encrypt                      bool   `default:"false" help:"If true encrypt and encode password, write password to stdout and exit"`
 	CustomMetricsQuery           string `default:"" help:"A SQL query to collect custom metrics. Query results 'metric_name', 'metric_value', and 'metric_type' have special meanings"`
 	CustomMetricsConfig          string `default:"" help:"YAML configuration with one or more SQL queries to collect custom metrics"`
 }
 
 // Validate validates SQL specific arguments
 func (al ArgumentList) Validate() error {
+	if al.Encrypt {
+		fmt.Printf("Encrypted and encoded password: \n%s\n", encryptPassword(al))
+		os.Exit(0)
+	}
+
 	if al.Username == "" {
 		return errors.New("invalid configuration: must specify a username")
 	}
@@ -55,6 +63,10 @@ func (al ArgumentList) Validate() error {
 		if _, err := os.Stat(al.CustomMetricsConfig); err != nil {
 			return errors.New("custom_metrics_config argument: " + err.Error())
 		}
+	}
+
+	if err := decryptPassword(al); err != nil {
+		return err
 	}
 
 	return nil

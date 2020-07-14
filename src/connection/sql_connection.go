@@ -82,5 +82,6 @@ func CreateConnectionURL(args *args.ArgumentList) string {
 	connectionURL.RawQuery = query.Encode()
 
 	connectionString := connectionURL.String()
+	log.Debug("Connection string: %s", connectionString)
 	return connectionString
 }
